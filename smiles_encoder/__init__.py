@@ -1,1 +1,1 @@
-from smiles-encoder import SmilesEncoder
+from encoder import SmilesEncoder
