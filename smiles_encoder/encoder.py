@@ -56,9 +56,9 @@ class SMILESEncoder():
         # loading stokes models from github
         self._stokes_chemprop_models = [self._load_model_from_hf_hub(f"checkpoints_model_{i}/best-model-{i}.ckpt") for i in range(1, 21)]
 
-    def _load_model_from_hf_hub(self, filename) -> MPNN:
+    def _load_model_from_hf_hub(self, filename) -> models.MPNN:
         path = hf_hub_download("jacktnorris/stokes-et-al-chemprop-model", filename)         
-        return MPNN.load_from_checkpoint(path, map_location=self._tensor_map_location)
+        return models.MPNN.load_from_checkpoint(path, map_location=self._tensor_map_location)
 
 
     @verify_smiles
@@ -113,4 +113,4 @@ class SMILESEncoder():
         average_fingerprint = torch.mean(concatenated_fingerprints, dim=0, keepdim=False)
         
         # 5. Convert the final tensor to a NumPy array for the return type
-        return average_fingerprint.cpu().numpy()
+        return average_fingerprint.numpy()
