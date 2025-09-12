@@ -5,7 +5,7 @@ setup(
     version='1.0.0',
     packages=find_packages(),
     install_requires=[
-	"chemprop>=2.2.1"
+	"chemprop>=2.2.1",
 	"transformers>=4.56.0",
 	"torch>=2.7.1",
 	"huggingface-hub>=0.34.4",
