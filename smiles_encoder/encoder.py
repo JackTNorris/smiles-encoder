@@ -1,7 +1,7 @@
 from rdkit import Chem
 from transformers import AutoTokenizer, AutoModel
 from chemprop import models, featurizers, data
-from torch import no_grad
+import torch
 from typing import Literal
 from functools import wraps
 from huggingface_hub import hf_hub_download
@@ -41,10 +41,10 @@ class SMILESEncoder():
 
         # morgan generators
         self._morgan_gens = {
-            "ecfp4": Chem.rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048, atomInvariantsGenerator=rdFingerprintGenerator.GetMorganAtomInvGen()),
-            "ecfp6": Chem.rdFingerprintGenerator.GetMorganGenerator(radius=3, fpSize=2048, atomInvariantsGenerator=rdFingerprintGenerator.GetMorganAtomInvGen()),
-            "fcfp4": Chem.rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048, atomInvariantsGenerator=rdFingerprintGenerator.GetMorganFeatureAtomInvGen()),
-            "fcfp6": Chem.rdFingerprintGenerator.GetMorganGenerator(radius=3, fpSize=2048, atomInvariantsGenerator=rdFingerprintGenerator.GetMorganFeatureAtomInvGen())
+            "ecfp4": Chem.rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048, atomInvariantsGenerator=Chem.rdFingerprintGenerator.GetMorganAtomInvGen()),
+            "ecfp6": Chem.rdFingerprintGenerator.GetMorganGenerator(radius=3, fpSize=2048, atomInvariantsGenerator=Chem.rdFingerprintGenerator.GetMorganAtomInvGen()),
+            "fcfp4": Chem.rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048, atomInvariantsGenerator=Chem.rdFingerprintGenerator.GetMorganFeatureAtomInvGen()),
+            "fcfp6": Chem.rdFingerprintGenerator.GetMorganGenerator(radius=3, fpSize=2048, atomInvariantsGenerator=Chem.rdFingerprintGenerator.GetMorganFeatureAtomInvGen())
         }
         # RDKit fingerprint
         self._rdk_gen = Chem.rdFingerprintGenerator.GetRDKitFPGenerator()
@@ -76,12 +76,13 @@ class SMILESEncoder():
         return np.array(list(self._rdk_gen.GetFingerprint(Chem.MolFromSmiles(smiles))))
     
     def encode_chemberta(self, smiles: str) -> NDArray:
+        # convert smile into token
         inputs = self._chemberta_helper['tokenizer'](smiles, return_tensors="pt", padding=True, truncation=True)
         # using nograd since we're only using inference
-        with no_grad():
+        with torch.no_grad():
             outputs = self._chemberta_helper['model'](**inputs)
             hidden_states = outputs.last_hidden_state
-            embedding = hidden_states.mean(dim=1).squeeze(0)
+            embedding = hidden_states.mean(dim=1).squeeze(0) # mean pooling, collapsing batch dim
             return np.array(embedding)
     @verify_smiles
     def encode_stokes_fingerprint(self, smiles: str) -> NDArray:
@@ -101,7 +102,8 @@ class SMILESEncoder():
         all_fingerprints = []
         
         # 3. Iterate through all models and get the fingerprint from each
-        with no_grad():
+        # no_grad meaning no gradient calculation
+        with torch.no_grad():
             for model in self._stokes_chemprop_models:
                 # The model's encoding method takes a batch and an index.
                 # We are using index 0 because our batch has only one molecule.
@@ -113,4 +115,4 @@ class SMILESEncoder():
         average_fingerprint = torch.mean(concatenated_fingerprints, dim=0, keepdim=False)
         
         # 5. Convert the final tensor to a NumPy array for the return type
-        return average_fingerprint.numpy()
+        return average_fingerprint.numpy().squeeze() # remove batch dim
