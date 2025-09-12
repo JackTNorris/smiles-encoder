@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smiles-encoder"
+version = "0.1.0"
+description = "My awesome Python package"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [
+    { name = "Jack Norris" },
+    { name = "Fanni Ruiz" },
+    { name = "Malena Russo" }
+]
+dependencies = [
+    "chemprop>=2.2.1",
+    "transformers>=4.56.0",
+    "torch>=2.7.1",
+    "huggingface-hub>=0.34.4",
+    "numpy>=2.3.2"
+]
