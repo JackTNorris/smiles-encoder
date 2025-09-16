@@ -31,8 +31,9 @@ def verify_smiles(func):
     return wrapper
 
 class SMILESEncoder():
-    def __init__(self, tensor_map_location='cpu', load_models = False):
-        self._loaded_models = load_models
+    def __init__(self, tensor_map_location='cpu', load_chemberta = False, load_stokes_gnn = False):
+        self._loaded_chemberta = load_chemberta
+        self._loaded_stokes_gnn = load_stokes_gnn
         # setting tensor map location
         self._tensor_map_location = tensor_map_location
 
@@ -53,10 +54,10 @@ class SMILESEncoder():
         self._rdk_stokes_featurizer = featurizers.V1RDKit2DNormalizedFeaturizer()
         # chemberta model
 
-        self._chemberta_helper = {'model': AutoModel.from_pretrained(chemberta_model_name), 'tokenizer': AutoTokenizer.from_pretrained(chemberta_model_name)} if load_models else None
+        self._chemberta_helper = {'model': AutoModel.from_pretrained(chemberta_model_name), 'tokenizer': AutoTokenizer.from_pretrained(chemberta_model_name)} if load_chemberta else None
         
         # loading stokes models from github
-        self._stokes_chemprop_models = [self._load_model_from_hf_hub(f"checkpoints_model_{i}/best-model-{i}.ckpt") for i in range(1, 21)] if load_models else None
+        self._stokes_chemprop_models = [self._load_model_from_hf_hub(f"checkpoints_model_{i}/best-model-{i}.ckpt") for i in range(1, 21)] if load_stokes_gnn else None
 
     def _load_model_from_hf_hub(self, filename) -> models.MPNN:
         path = hf_hub_download("jacktnorris/stokes-et-al-chemprop-model", filename)         
@@ -78,8 +79,8 @@ class SMILESEncoder():
         return np.array(list(self._rdk_gen.GetFingerprint(Chem.MolFromSmiles(smiles))))
     
     def encode_chemberta(self, smiles: str) -> NDArray:
-        if self._loaded_models == False:
-            raise RuntimeError("Models not loaded, cannot encode. Please set load_models=True when initializing SMILESEncoder")
+        if self._loaded_chemberta == False:
+            raise RuntimeError("Models not loaded, cannot encode. Please set load_chemberta=True when initializing SMILESEncoder")
         # convert smile into token
         inputs = self._chemberta_helper['tokenizer'](smiles, return_tensors="pt", padding=True, truncation=True)
         # using nograd since we're only using inference
@@ -94,8 +95,8 @@ class SMILESEncoder():
     
     @verify_smiles
     def encode_stokes_GNN(self, smiles: str) -> NDArray:
-        if self._loaded_models == False:
-            raise RuntimeError("Models not loaded, cannot encode. Please set load_models=True when initializing SMILESEncoder")
+        if self._loaded_stokes_gnn == False:
+            raise RuntimeError("Models not loaded, cannot encode. Please set _loaded_stokes_gnn=True when initializing SMILESEncoder")
         # 1. Featurize the single molecule and prepare a batch of size 1
         mol_data = data.MoleculeDatapoint.from_smi(smiles)
         featurizer = featurizers.SimpleMoleculeMolGraphFeaturizer(atom_featurizer=featurizers.MultiHotAtomFeaturizer.v1())
